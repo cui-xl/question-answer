@@ -4,15 +4,21 @@ import cn.hutool.core.collection.CollUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.cxl.mianshiya.annotation.AuthCheck;
+import com.cxl.mianshiya.common.BaseResponse;
 import com.cxl.mianshiya.common.ErrorCode;
+import com.cxl.mianshiya.common.ResultUtils;
 import com.cxl.mianshiya.constant.CommonConstant;
+import com.cxl.mianshiya.constant.UserConstant;
 import com.cxl.mianshiya.exception.ThrowUtils;
 import com.cxl.mianshiya.mapper.QuestionMapper;
 import com.cxl.mianshiya.model.dto.question.QuestionQueryRequest;
 import com.cxl.mianshiya.model.entity.Question;
+import com.cxl.mianshiya.model.entity.QuestionBankQuestion;
 import com.cxl.mianshiya.model.entity.User;
 import com.cxl.mianshiya.model.vo.QuestionVO;
 import com.cxl.mianshiya.model.vo.UserVO;
+import com.cxl.mianshiya.service.QuestionBankQuestionService;
 import com.cxl.mianshiya.service.QuestionService;
 import com.cxl.mianshiya.service.UserService;
 import com.cxl.mianshiya.utils.SqlUtils;
@@ -20,6 +26,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
@@ -40,6 +48,8 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
 
     @Resource
     private UserService userService;
+    @Resource
+    private QuestionBankQuestionService questionBankQuestionService;
 
     /**
      * 校验数据
@@ -185,5 +195,32 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
         questionVOPage.setRecords(questionVOList);
         return questionVOPage;
     }
+    /**
+     * 分页获取题目列表（仅管理员可用）
+     *
+     * @param questionQueryRequest
+     * @return
+     */
+    public Page<Question> listQuestionByPage(QuestionQueryRequest questionQueryRequest) {
+        long current = questionQueryRequest.getCurrent();
+        long size = questionQueryRequest.getPageSize();
+        // 题目表查询条件
+        QueryWrapper<Question> queryWrapper = this.getQueryWrapper(questionQueryRequest);
 
+        // 根据题库查询题目
+        Long questionBankId = questionQueryRequest.getQuestionBankId();
+        if (questionBankId != null){
+            List<QuestionBankQuestion> list = questionBankQuestionService.lambdaQuery()
+                    .select(QuestionBankQuestion::getQuestionId)
+                    .eq(QuestionBankQuestion::getQuestionBankId, questionBankId).list();
+            if (CollUtil.isNotEmpty(list)){
+                Set<Long> questionIdList = list.stream().map(QuestionBankQuestion::getQuestionId).collect(Collectors.toSet());
+                queryWrapper.in("id",questionIdList);
+            }
+        }
+        // 查询数据库
+        Page<Question> questionPage = this.page(new Page<>(current, size),
+                queryWrapper);
+        return questionPage;
+    }
 }

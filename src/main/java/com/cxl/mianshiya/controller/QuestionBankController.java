@@ -9,14 +9,17 @@ import com.cxl.mianshiya.common.ResultUtils;
 import com.cxl.mianshiya.constant.UserConstant;
 import com.cxl.mianshiya.exception.BusinessException;
 import com.cxl.mianshiya.exception.ThrowUtils;
+import com.cxl.mianshiya.model.dto.question.QuestionQueryRequest;
 import com.cxl.mianshiya.model.dto.questionBank.QuestionBankAddRequest;
 import com.cxl.mianshiya.model.dto.questionBank.QuestionBankEditRequest;
 import com.cxl.mianshiya.model.dto.questionBank.QuestionBankQueryRequest;
 import com.cxl.mianshiya.model.dto.questionBank.QuestionBankUpdateRequest;
+import com.cxl.mianshiya.model.entity.Question;
 import com.cxl.mianshiya.model.entity.QuestionBank;
 import com.cxl.mianshiya.model.entity.User;
 import com.cxl.mianshiya.model.vo.QuestionBankVO;
 import com.cxl.mianshiya.service.QuestionBankService;
+import com.cxl.mianshiya.service.QuestionService;
 import com.cxl.mianshiya.service.UserService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
@@ -41,6 +44,8 @@ public class QuestionBankController {
 
     @Resource
     private UserService userService;
+    @Resource
+    private QuestionService questionService;
 
     // region 增删改查
 
@@ -52,6 +57,7 @@ public class QuestionBankController {
      * @return
      */
     @PostMapping("/add")
+    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     public BaseResponse<Long> addQuestionBank(@RequestBody QuestionBankAddRequest questionBankAddRequest, HttpServletRequest request) {
         ThrowUtils.throwIf(questionBankAddRequest == null, ErrorCode.PARAMS_ERROR);
         // todo 在此处将实体类和 DTO 进行转换
@@ -78,6 +84,8 @@ public class QuestionBankController {
      * @return
      */
     @PostMapping("/delete")
+    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
+
     public BaseResponse<Boolean> deleteQuestionBank(@RequestBody DeleteRequest deleteRequest, HttpServletRequest request) {
         if (deleteRequest == null || deleteRequest.getId() <= 0) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
@@ -104,6 +112,7 @@ public class QuestionBankController {
      * @return
      */
     @PostMapping("/update")
+
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     public BaseResponse<Boolean> updateQuestionBank(@RequestBody QuestionBankUpdateRequest questionBankUpdateRequest) {
         if (questionBankUpdateRequest == null || questionBankUpdateRequest.getId() <= 0) {
@@ -131,13 +140,23 @@ public class QuestionBankController {
      * @return
      */
     @GetMapping("/get/vo")
-    public BaseResponse<QuestionBankVO> getQuestionBankVOById(long id, HttpServletRequest request) {
-        ThrowUtils.throwIf(id <= 0, ErrorCode.PARAMS_ERROR);
+    public BaseResponse<QuestionBankVO> getQuestionBankVOById(QuestionBankQueryRequest questionBankQueryRequest, HttpServletRequest request) {
+        ThrowUtils.throwIf(questionBankQueryRequest== null, ErrorCode.PARAMS_ERROR);
+        Long id = questionBankQueryRequest.getId();
+        boolean needQueryQuestionList = questionBankQueryRequest.isNeedQueryQuestionList();
         // 查询数据库
-        QuestionBank questionBank = questionBankService.getById(id);
+        QuestionBank questionBank = questionBankService.getById(questionBankQueryRequest.getId());
+        // 查询题库封装
+        QuestionBankVO questionBankVO = questionBankService.getQuestionBankVO(questionBank, request);
+        if (needQueryQuestionList){
+            QuestionQueryRequest questionQueryRequest = new QuestionQueryRequest();
+            questionQueryRequest.setQuestionBankId(id);
+            Page<Question> questionPage = questionService.listQuestionByPage(questionQueryRequest);
+            questionBankVO.setQuestionPage(questionPage);
+        }
         ThrowUtils.throwIf(questionBank == null, ErrorCode.NOT_FOUND_ERROR);
         // 获取封装类
-        return ResultUtils.success(questionBankService.getQuestionBankVO(questionBank, request));
+        return ResultUtils.success(questionBankVO);
     }
 
     /**

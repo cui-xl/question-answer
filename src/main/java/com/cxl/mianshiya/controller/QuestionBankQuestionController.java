@@ -1,5 +1,7 @@
 package com.cxl.mianshiya.controller;
 
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.baomidou.mybatisplus.extension.conditions.query.LambdaQueryChainWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cxl.mianshiya.annotation.AuthCheck;
 import com.cxl.mianshiya.common.BaseResponse;
@@ -11,6 +13,7 @@ import com.cxl.mianshiya.exception.BusinessException;
 import com.cxl.mianshiya.exception.ThrowUtils;
 import com.cxl.mianshiya.model.dto.questionBankQuestion.QuestionBankQuestionAddRequest;
 import com.cxl.mianshiya.model.dto.questionBankQuestion.QuestionBankQuestionQueryRequest;
+import com.cxl.mianshiya.model.dto.questionBankQuestion.QuestionBankQuestionRemoveRequest;
 import com.cxl.mianshiya.model.dto.questionBankQuestion.QuestionBankQuestionUpdateRequest;
 import com.cxl.mianshiya.model.entity.QuestionBankQuestion;
 import com.cxl.mianshiya.model.entity.User;
@@ -94,6 +97,25 @@ public class QuestionBankQuestionController {
         boolean result = questionBankQuestionService.removeById(id);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
         return ResultUtils.success(true);
+    }
+    /**
+     * 移除题库题目关联
+     *
+     * @param removeRequest
+     * @param request
+     * @return
+     */
+    @PostMapping("/remove")
+    public BaseResponse<Boolean> removeQuestionBankQuestion(@RequestBody QuestionBankQuestionRemoveRequest removeRequest, HttpServletRequest request) {
+        ThrowUtils.throwIf(removeRequest == null, ErrorCode.PARAMS_ERROR);
+        User user = userService.getLoginUser(request);
+        long id = removeRequest.getId();
+        Long questionBankId = removeRequest.getQuestionBankId();
+        Long questionId = removeRequest.getQuestionId();
+        LambdaQueryChainWrapper<QuestionBankQuestion> wrapper = questionBankQuestionService.lambdaQuery().eq(QuestionBankQuestion::getQuestionId, questionId)
+                .eq(QuestionBankQuestion::getQuestionBankId, questionBankId);
+        boolean remove = questionBankQuestionService.remove(wrapper);
+        return ResultUtils.success(remove);
     }
 
     /**
@@ -201,6 +223,7 @@ public class QuestionBankQuestionController {
         // 获取封装类
         return ResultUtils.success(questionBankQuestionService.getQuestionBankQuestionVOPage(questionBankQuestionPage, request));
     }
+
 
     // endregion
 }

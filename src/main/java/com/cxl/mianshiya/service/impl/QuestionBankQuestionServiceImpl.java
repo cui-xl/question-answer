@@ -9,11 +9,15 @@ import com.cxl.mianshiya.constant.CommonConstant;
 import com.cxl.mianshiya.exception.ThrowUtils;
 import com.cxl.mianshiya.mapper.QuestionBankQuestionMapper;
 import com.cxl.mianshiya.model.dto.questionBankQuestion.QuestionBankQuestionQueryRequest;
+import com.cxl.mianshiya.model.entity.Question;
+import com.cxl.mianshiya.model.entity.QuestionBank;
 import com.cxl.mianshiya.model.entity.QuestionBankQuestion;
 import com.cxl.mianshiya.model.entity.User;
 import com.cxl.mianshiya.model.vo.QuestionBankQuestionVO;
 import com.cxl.mianshiya.model.vo.UserVO;
 import com.cxl.mianshiya.service.QuestionBankQuestionService;
+import com.cxl.mianshiya.service.QuestionBankService;
+import com.cxl.mianshiya.service.QuestionService;
 import com.cxl.mianshiya.service.UserService;
 import com.cxl.mianshiya.utils.SqlUtils;
 import lombok.extern.slf4j.Slf4j;
@@ -22,6 +26,7 @@ import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -39,7 +44,10 @@ public class QuestionBankQuestionServiceImpl extends ServiceImpl<QuestionBankQue
 
     @Resource
     private UserService userService;
-
+    @Resource
+    private QuestionBankService questionBankService;
+    @Resource
+    private QuestionService questionService;
     /**
      * 校验数据
      *
@@ -50,6 +58,16 @@ public class QuestionBankQuestionServiceImpl extends ServiceImpl<QuestionBankQue
     public void validQuestionBankQuestion(QuestionBankQuestion questionBankQuestion, boolean add) {
         ThrowUtils.throwIf(questionBankQuestion == null, ErrorCode.PARAMS_ERROR);
         // 创建数据时，参数不能为空
+        Long questionBankId = questionBankQuestion.getQuestionBankId();
+        Long questionId = questionBankQuestion.getQuestionId();
+        if (questionId != null){
+            Question question = questionService.getById(questionId);
+            ThrowUtils.throwIf(question == null, ErrorCode.PARAMS_ERROR, "题目不存在");
+        }
+        if (questionBankId != null){
+            QuestionBank questionBank = questionBankService.getById(questionBankId);
+            ThrowUtils.throwIf(questionBank == null, ErrorCode.PARAMS_ERROR, "题库不存在");
+        }
         if (add) {
             // todo 补充校验规则
         }
